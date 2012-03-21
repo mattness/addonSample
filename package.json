@@ -1,0 +1,10 @@
+{
+  "name": "addonSample",
+  "version": "0.1.0",
+  "description": "",
+  "dependencies": {
+    "bindings": ">= 0.3.0"
+  },
+  "main": "lib/index",
+  "engines": { "node": ">= 0.6.13 < 0.7.0" }
+}
