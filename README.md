@@ -16,7 +16,7 @@ developer does not control, and can't modify to extend node::ObjectWrap.
 Building
 --------
 There is a build-time dependency on
-[node-gyp](https://github.com/TooTallNate/node-gyp.git) 0.3.5+.  If node-gyp
+[node-gyp](https://github.com/TooTallNate/node-gyp) 0.3.5+.  If node-gyp
 is not on the path, make will install it (via npm) into the `node_modules`
 directory.
 
