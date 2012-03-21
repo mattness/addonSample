@@ -6,5 +6,10 @@ function runit() {
   console.log(result);
 }
 
-runit();
-//setInterval(runit, 1000);  // Do it over and over to watch for memory leaks
+//runit();
+var id = setInterval(runit, 100);  // Do it over and over to watch for memory leaks
+
+// Stop it after one minute
+setTimeout(function() {
+  clearInterval(id);
+}, 60000);

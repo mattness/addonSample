@@ -1,7 +1,5 @@
 #include "native_object_wrapper.h"
 
-#include <v8.h>
-
 #include "library.h"
 
 using v8::AccessorInfo;
@@ -17,34 +15,44 @@ using v8::String;
 using v8::Undefined;
 using v8::Value;
 
-Handle<Object> NativeObjectWrapper::wrap(NativeObject* obj) {
+Persistent<ObjectTemplate> NativeObjectWrapper::class_template_;
+static void CleanupCallback(Persistent<Value> value, void *data);
+
+void NativeObjectWrapper::Initialize() {
   HandleScope scope;
 
-  //  TODO:  Creating a new template for every instance that gets wrapped
-  //  seems redundant.  However, attempts to make it static and only set it up
-  //  once were met with a segfault when NewInstance() was called.  Is such a
-  //  thing possible?
-
-  // This code based on http://blog.owned.co.za/?p=205
-  Handle<ObjectTemplate> raw_template = ObjectTemplate::New();
+  Local<ObjectTemplate> raw_template = ObjectTemplate::New();
   raw_template->SetInternalFieldCount(1);
   raw_template->SetAccessor(String::New("id"), JS_GetId, JS_SetId);
 
-  Persistent<ObjectTemplate> class_template =
-    Persistent<ObjectTemplate>::New(raw_template);
-  Handle<Object> wrapper = class_template->NewInstance();
-  wrapper->SetInternalField(0, External::New(obj));
+  class_template_ = Persistent<ObjectTemplate>::New(raw_template);
+}
 
-  // TODO:  More leakage here too.  Dispose() and Clear() are never getting
-  // called on class_template (should it even be Persistent?), but when and
-  // how should that be handled?
+Handle<Object> NativeObjectWrapper::wrap(NativeObject* obj) {
+  HandleScope scope;
+
+  // Create an instance of our class template and store it in a local handle...
+  Local<Object> handle = NativeObjectWrapper::class_template_->NewInstance();
+  // ... so we can wrap it in a Persistent handle ...
+  Persistent<Object> wrapper = Persistent<Object>::New(handle);
+  // ... and attach the native object and cleanup function.
+  wrapper->SetPointerInInternalField(0, obj);
+  wrapper.MakeWeak(obj, CleanupCallback);
+  // MarkIndependent is an optimization that helps the GC speed up sweeps
+  wrapper.MarkIndependent();
 
   return scope.Close(wrapper);
 }
 
 NativeObject* NativeObjectWrapper::unwrap(Handle<Object> wrapper) {
-  Handle<External> field = Handle<External>::Cast(wrapper->GetInternalField(0));
-  return static_cast<NativeObject*>(field->Value());
+  NativeObject* obj = static_cast<NativeObject*>(
+    wrapper->GetPointerFromInternalField(0));
+  return obj;
+}
+
+void CleanupCallback(Persistent<Value> value, void *data) {
+  NativeObject *obj = static_cast<NativeObject*>(data);
+  delete obj;
 }
 
 Handle<Value> NativeObjectWrapper::JS_GetId(Local<String> property,

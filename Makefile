@@ -9,7 +9,7 @@ ifeq ($(BUILDTYPE),Debug)
 GYPBUILDARGS=--debug
 endif
 
-all: $(NODE-GYP) lib test
+all: $(NODE-GYP) lib
 
 configure: $(CONFIG_OUTPUTS)
 

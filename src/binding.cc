@@ -16,9 +16,12 @@ using v8::HandleScope;
 using v8::Local;
 using v8::Number;
 using v8::Object;
+using v8::Persistent;
 using v8::String;
 using v8::Undefined;
 using v8::Value;
+
+void VectorCleanup(Persistent<Value> value, void *data);
 
 Handle<Value> JS_RunFn(const Arguments& args) {
   HandleScope scope;
@@ -44,21 +47,28 @@ Handle<Value> JS_RunFn(const Arguments& args) {
   std::vector<NativeObject*>::iterator iterator = libResult->begin();
   int32_t index = 0;
 
+
   while(iterator < libResult->end()) {
     Handle<Object> wrapper = NativeObjectWrapper::wrap(*iterator);
     arr->Set(Number::New(index++), wrapper);
     iterator++;
   }
 
-  // TODO:  I know I'm leaking the vector here, but can't delete it b/c it'll
-  // destroy all the elements that we just wrapped.  The vector's lifetime
-  // needs to be tied to something on the JS side so it can be deleted at the
-  // correct time, but how?
+  Persistent<Array> handle = Persistent<Array>::New(arr);
+  handle.MakeWeak(libResult, VectorCleanup);
+  handle.MarkIndependent();
 
-  return scope.Close(arr);
+  return scope.Close(handle);
+}
+
+void VectorCleanup(Persistent<Value> value, void *data) {
+  std::vector<NativeObject*>* vec =
+    static_cast<std::vector<NativeObject*>*>(data);
+  delete vec;
 }
 
 void init(Handle<Object> target) {
   NODE_SET_METHOD(target, "runFn", JS_RunFn);
+  NativeObjectWrapper::Initialize();
 }
 NODE_MODULE(bindings, init)
